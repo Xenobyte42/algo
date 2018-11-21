@@ -3,8 +3,6 @@
 #include <cmath>
 
 
-//TODO(Xenobyte): realize get_height cTree
-
 /************ Бинарное дерево **************/
 
 template<typename Value>
@@ -82,6 +80,10 @@ class CartesianTree {
   public:
     CartesianTree() = default;
     ~CartesianTree();
+    CartesianTree(const CartesianTree&) = delete;
+    CartesianTree(CartesianTree&&) = delete;
+    CartesianTree& operator=(const CartesianTree&) = delete;
+    CartesianTree& operator=(CartesianTree&&) = delete;
     
     void insert(KType key, PType priority);
 
