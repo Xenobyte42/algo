@@ -25,7 +25,7 @@ class BinaryTree {
     void insert(Value& val);
     void visit(Node* node);
     void print();
-
+    
     size_t get_height() const {
         return root->height;
     }

@@ -15,6 +15,16 @@ class BinaryTree {
         Node* left = nullptr;
         Node* right = nullptr;
         Node* parent = nullptr;
+
+        Node() = default;
+        ~Node() {
+            if (left) {
+                delete left;
+            }
+            if (right) {
+                delete right;
+            }
+        }
     };
     
   public:
@@ -55,10 +65,19 @@ class CartesianTree {
     struct Node {
         KType key;
         PType priority;
-        char height = 1;
         Node* left = nullptr;
         Node* right = nullptr;
         Node* parent = nullptr;
+
+        Node() = default;
+        ~Node() {
+            if (left) {
+                delete left;
+            }
+            if (right) {
+                delete right;
+            }
+        }
     };
 
   public:
@@ -67,8 +86,14 @@ class CartesianTree {
     
     void insert(KType key, PType priority);
 
-    char get_height() const {
-        return root->height;
+    size_t get_height() const {
+        if (!root) {
+            return 0;
+        }
+        if (!root->right && !root->left) {
+            return 1;
+        }
+        return node_height(root);
     }
     
   private:
@@ -83,7 +108,21 @@ class CartesianTree {
         return new_node;
     }
 
-    void update_height(Node* node);
+    size_t node_height(Node* node) const {
+        if(node == 0) {
+            return 0;
+        }
+
+        size_t left = 0, right = 0;
+        if (node->left) {
+            left = node_height(node->left);
+        }
+        if (node->right) {
+            right = node_height(node->right);
+        }
+        return std::max(left, right) + 1;
+    }
+
     void split(Node* current, KType key, Node*& left, Node*& right);
     Node* merge(Node* left, Node* right);
 
@@ -108,28 +147,7 @@ void BinaryTree<Value>::update_height(Node* node) {
 
 template<typename Value>
 BinaryTree<Value>::~BinaryTree() {
-    if (root) {
-        Node* current = root;
-        while (current) {
-            if (current->left) {
-                current = current->left;
-            } else if (current->right) {
-                current = current->right;
-            } else {
-                Node* parent = current->parent;
-                if (parent) {
-                    if (parent->left == current) {
-                        parent->left = nullptr;
-                    } else {
-                        parent->right = nullptr;
-                    }
-                }
-                delete current;
-                current = parent;
-            }
-        }
-        root = nullptr;
-    }
+    delete root;
 }
 
 template<typename Value>
@@ -202,58 +220,10 @@ void BinaryTree<Value>::print() {
 /********************** Методы декартового дерева ****************************/
 
 template<typename KType, typename PType>
-void CartesianTree<KType, PType>::update_height(Node* node) {
-    if (!node->right || !node->left) {
-        if (node->right) {
-            node->height = node->right->height + 1;
-        } else if (node->left) {
-            node->height = node->left->height + 1;
-        }
-        return;
-    }
-    node->height = std::max(node->left->height, node->right->height) + 1;
-    return;
-}
-
-template<typename KType, typename PType>
 CartesianTree<KType, PType>::~CartesianTree() {
-    if (root) {
-        Node* current = root;
-        while (current) {
-            if (current->left) {
-                current = current->left;
-            } else if (current->right) {
-                current = current->right;
-            } else {
-                Node* parent = current->parent;
-                if (parent) {
-                    if (parent->left == current) {
-                        parent->left = nullptr;
-                    } else {
-                        parent->right = nullptr;
-                    }
-                }
-                delete current;
-                current = parent;
-            }
-        }
-        root = nullptr;
-    }
+    delete root;
 }
 
-template<typename KType, typename PType>
-void CartesianTree<KType, PType>::split(Node* current, KType key, Node*& left, Node*& right) {
-    if (!current) {
-        left = nullptr;
-        right = nullptr;
-    } else if (current->key <= key) {
-        split(current->right, key, current->right, right);
-        left = current;
-    } else {
-        split(current->left, key, left, current->left);
-        right = current;
-    }
-}
 
 template<typename KType, typename PType>
 typename CartesianTree<KType, PType>::Node* CartesianTree<KType, PType>::merge(Node* left, Node* right) {
@@ -271,10 +241,24 @@ typename CartesianTree<KType, PType>::Node* CartesianTree<KType, PType>::merge(N
 }
 
 template<typename KType, typename PType>
+void CartesianTree<KType, PType>::split(Node* current, KType key, Node*& left, Node*& right) {
+    if (!current) {
+        left = nullptr;
+        right = nullptr;
+    } else if (current->key <= key) {
+        split(current->right, key, current->right, right);
+        left = current;
+    } else {
+        split(current->left, key, left, current->left);
+        right = current;
+    }
+}
+
+template<typename KType, typename PType>
 void CartesianTree<KType, PType>::insert(const KType key, const PType priority) {
     Node* parent = nullptr;
     Node* node = root;
-    while (node != nullptr && node->priority >= priority) {
+    while (node && node->priority >= priority) {
         parent = node;
         node = (node->key < key) ? node->right: node->left;
     }
@@ -289,8 +273,11 @@ void CartesianTree<KType, PType>::insert(const KType key, const PType priority) 
         root = newNode;
     }
     if (parent) {
-        if (parent->key > newNode->key) parent->left = newNode;
-        else parent->right = newNode;
+        if (parent->key > newNode->key) {
+            parent->left = newNode;
+        } else {
+            parent->right = newNode;
+        }
     }
 }
 /*********************** /main/ ***************************/
@@ -311,7 +298,8 @@ int main() {
     }
     int b_tree_height = static_cast<int>(b_tree.get_height());
     int c_tree_height = static_cast<int>(c_tree.get_height());
-    
+
+    std::cout << b_tree_height << " " << c_tree_height << std::endl;
     std::cout << std::abs(c_tree_height - b_tree_height) << std::endl; 
 
     return 0;
