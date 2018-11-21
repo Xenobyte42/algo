@@ -67,7 +67,6 @@ class CartesianTree {
         PType priority;
         Node* left = nullptr;
         Node* right = nullptr;
-        Node* parent = nullptr;
 
         Node() = default;
         ~Node() {
@@ -97,14 +96,10 @@ class CartesianTree {
     }
     
   private:
-    Node* create_node(KType key, PType prior, Node* left = nullptr,
-                      Node* right = nullptr, Node* parent = nullptr) {
+    Node* create_node(KType key, PType prior) {
         Node* new_node = new Node;
         new_node->key = key;
         new_node->priority = prior;
-        new_node->left = left;
-        new_node->right = right;
-        new_node->parent = parent;
         return new_node;
     }
 
@@ -123,7 +118,7 @@ class CartesianTree {
         return std::max(left, right) + 1;
     }
 
-    void split(Node* current, KType key, Node*& left, Node*& right);
+    std::pair<Node*, Node*> split(Node* current, KType key);
     Node* merge(Node* left, Node* right);
 
     Node* root = nullptr;
@@ -226,31 +221,39 @@ CartesianTree<KType, PType>::~CartesianTree() {
 
 
 template<typename KType, typename PType>
-typename CartesianTree<KType, PType>::Node* CartesianTree<KType, PType>::merge(Node* left, Node* right) {
-    if (!left || !right) {
-        return (!left) ? right : left;
+typename CartesianTree<KType, PType>::Node* CartesianTree<KType, PType>::merge(Node* first, Node* second) {
+    if (first == nullptr) {
+        return second;
     }
-
-    if (left->priority > right->priority) {
-        left->right = merge(left->right, right);
-        return left;
+    if (second == nullptr) {
+        return first;
     }
-
-    right->left = merge(left, right->left);
-    return right;
+    if (first->priority <= second->priority) {
+        first->right = merge(second->right, second);
+        return first;
+    } else {
+        second->left = merge(first, second->left);
+        return second;
+    }
 }
 
 template<typename KType, typename PType>
-void CartesianTree<KType, PType>::split(Node* current, KType key, Node*& left, Node*& right) {
+std::pair<
+    typename CartesianTree<KType, PType>::Node*, 
+    typename CartesianTree<KType, PType>::Node*
+>
+CartesianTree<KType, PType>::split(Node* current, KType key) {
     if (!current) {
-        left = nullptr;
-        right = nullptr;
-    } else if (current->key <= key) {
-        split(current->right, key, current->right, right);
-        left = current;
+        return {nullptr, nullptr};
+    }
+    if (current->key <= key) {
+        auto res = split(current->right, key);
+        current->right = res.first;
+        return {current, res.second};
     } else {
-        split(current->left, key, left, current->left);
-        right = current;
+        auto res = split(current->left, key);
+        current->left = res.second;
+        return {res.first, current};
     }
 }
 
@@ -263,20 +266,18 @@ void CartesianTree<KType, PType>::insert(const KType key, const PType priority) 
         node = (node->key < key) ? node->right: node->left;
     }
 
-    Node* left = nullptr;
-    Node* right = nullptr;
-
-    split(node, key, left, right);
-    Node* newNode = create_node(key, priority, left, right, parent);
+    auto res = split(node, key);
+    Node* new_node = create_node(key, priority);
+    new_node->left = res.first;
+    new_node->right = res.second;
 
     if (!parent) {
-        root = newNode;
-    }
-    if (parent) {
-        if (parent->key > newNode->key) {
-            parent->left = newNode;
+        root = new_node;
+    } else {
+        if (parent->key >= new_node->key) {
+            parent->left = new_node;
         } else {
-            parent->right = newNode;
+            parent->right = new_node;
         }
     }
 }
@@ -299,7 +300,6 @@ int main() {
     int b_tree_height = static_cast<int>(b_tree.get_height());
     int c_tree_height = static_cast<int>(c_tree.get_height());
 
-    std::cout << b_tree_height << " " << c_tree_height << std::endl;
     std::cout << std::abs(c_tree_height - b_tree_height) << std::endl; 
 
     return 0;
