@@ -207,7 +207,28 @@ void CartesianTree<KType, PType>::update_height(Node* node) {
 
 template<typename KType, typename PType>
 CartesianTree<KType, PType>::~CartesianTree() {
-    // TODO(Xenobyte): realize me
+    if (root) {
+        Node* current = root;
+        while (current) {
+            if (current->left) {
+                current = current->left;
+            } else if (current->right) {
+                current = current->right;
+            } else {
+                Node* parent = current->parent;
+                if (parent) {
+                    if (parent->left == current) {
+                        parent->left = nullptr;
+                    } else {
+                        parent->right = nullptr;
+                    }
+                }
+                delete current;
+                current = parent;
+            }
+        }
+        root = nullptr;
+    }
 }
 
 template<typename KType, typename PType>

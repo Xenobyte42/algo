@@ -165,7 +165,5 @@ int main() {
 
     tree.print();
 
-    std::cout << "Height: " << tree.get_height() << std::endl;
-
     return 0;
 }
