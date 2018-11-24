@@ -1,264 +1,274 @@
 #include <iostream>
-#include <type_traits>
+#include <stack>
+
 
 template<typename T>
 class AVLTree {
-  public:
     struct Node {
         T key;
-        unsigned char height;
+        int height;
+        size_t nodes;   // Число нод в поддереве
         Node* left;
         Node* right;
 
-        Node();
-
+        Node(T key) : key(key), height(1), nodes(1), left(nullptr), right(nullptr) {}
         ~Node() {
-            delete left;
-            delete right;
+            if (left) {
+                delete left;
+            }
+            if (right) {
+                delete right;
+            }
         }
-
-        Node(const T& key);
-
-        unsigned char height_left();
-        
-        unsigned char height_right();
-
-        void update_height();
-
-        int balance_factor();
-
-        Node* rotate_right();
-
-        Node* rotate_left();
-
-        Node* balance();
-
     };
 
+  public:
     AVLTree() = default;
     ~AVLTree() {
         delete root;
     }
+
     AVLTree(const AVLTree&) = delete;
     AVLTree(AVLTree&&) = delete;
     AVLTree& operator=(const AVLTree&) = delete;
     AVLTree& operator=(AVLTree&&) = delete;
 
-    size_t find_num(const T& key);
+    void insert(T key, int& position) {
+        root = sub_insert(root, key, position);
+    }
 
-    bool insert(const T& key);
-
-    void remove(const T& key);
+    void remove(int pos) {
+        root = sub_remove(root, pos);
+    }
 
   private:
-    size_t find_num_impl(Node* nd, const T& key);
-    
-    Node* remove_impl(Node* nd, const T& key);
-    
-    Node* insert_impl(Node* nd, const T& key);
-    
-    Node* findmin(Node* nd);
-    
-    Node* removemin_impl(Node* nd);
-    
+    Node* sub_remove(Node* p, int key);
+      
+    int balance_factor(Node* node) {
+        return get_height(node->right) - get_height(node->left);
+    }
+      
+    size_t get_nodes(Node* node) {
+        return (!node) ? 0 : node->nodes;
+    }
+
+    int get_height(Node* node) {
+        return (!node) ? 0 : node->height;
+    }
+
+    Node* sub_insert(Node* p, T key, int& position);
+    void fix_height(Node* p);
+    Node* balance(Node* p);
+    void fix_nodes(Node* p);
+    Node* rotate_right(Node* p);
+    Node* rotate_left(Node* p);
+    Node* find_min(Node* p);
+    Node* remove_min(Node* p);
 
     Node* root = nullptr;
 };
 
-
 template<typename T>
-AVLTree<T>::Node::Node()
-: height(0), left(nullptr), right(nullptr) {
-    if (std::is_pod<T>::value) {
-        key = T(0);
-    }
-}
-
-template<typename T>
-AVLTree<T>::Node::Node(const T& key)
-: key(key), height(0), left(nullptr), right(nullptr) {
-}
-
-template<typename T>
-unsigned char AVLTree<T>::Node::height_left() {
-    if (!left) {
-        return 0;
-    }
-    return left->height;
-}
-
-template<typename T>
-unsigned char AVLTree<T>::Node::height_right() {
-    if (!right) {
-        return 0;
-    }
-    return right->height;
-}
-
-template<typename T>
-void AVLTree<T>::Node::update_height() {
-    height = std::max(height_left(), height_right()) + 1;
-}
-
-template<typename T>
-int AVLTree<T>::Node::balance_factor() {
-    return height_right() - height_left();
-}
-
-template<typename T>
-typename AVLTree<T>::Node* AVLTree<T>::Node::rotate_right() {
-    Node* new_root = left;
-    left = new_root->right;
-    new_root->right = this;
-    update_height();
-    new_root->update_height();
-    return new_root;
-}
-
-template<typename T>
-typename AVLTree<T>::Node* AVLTree<T>::Node::rotate_left() {
-    Node* new_root = right;
-    right = new_root->left;
-    new_root->left = this;
-    update_height();
-    new_root->update_height();
-    return new_root;
-}
-
-template<typename T>
-typename AVLTree<T>::Node* AVLTree<T>::Node::balance() {
-    update_height();
-    if (balance_factor() == 2) {
-        if (right->balance_factor() < 0) {
-            right = right->rotate_right();
-        }
-        return rotate_left();
-    }
-    if (balance_factor() == -2) {
-        if (left->balance_factor() > 0) {
-            left = left->rotate_left();
-        }
-        return rotate_right();
-    }
-    return this;
-}
-
-
-template<typename T>
-size_t AVLTree<T>::find_num(const T& key) {
-    return find_num_impl(root, key);
-}
-
-template<typename T>
-bool AVLTree<T>::insert(const T& key) {
-    Node* tmp = insert_impl(root, key);
-    if (!tmp) {
-        return false;
-    }
-    root = tmp;
-    return true;
-}
-
-template<typename T>
-void AVLTree<T>::remove(const T& key) {
-    remove_impl(root, key);
-}
-
-template<typename T>
-size_t AVLTree<T>::find_num_impl(Node* nd, const T& key) {
-    if (!nd) {
-        return 0;
-    }
-    if (nd->key > key) {
-         return find_num_impl(nd->left, key) + find_num_impl(nd->right, key) + 1;
-    }
-    if (nd->key <= key) {
-        return find_num_impl(nd->right, key);
-    }
-}
-
-template<typename T>
-typename AVLTree<T>::Node* AVLTree<T>::remove_impl(Node* nd, const T& key) {
-    if (!nd) {
-        return 0;
-    }
-
-    if (key < nd->key) {
-        nd->left = remove_impl(nd->left, key);
-        return nd->balance();
-    }
-    if (key > nd->key) {
-        nd->right = remove_impl(nd->right, key);  
-        return nd->balance();
-    }
-    Node* left = nd->left;
-    Node* right = nd->right;
-    nd->left = nullptr;
-    nd->right = nullptr;
-    delete nd;
-    if (!right) {
-        return left;
-    }
-    Node* min = findmin(right);
-    min->right = removemin_impl(right);
-    min->left = left;
-    return min->balance();
-}
-
-template<typename T>
-typename AVLTree<T>::Node* AVLTree<T>::insert_impl(Node* nd, const T& key) {
-    if (!nd) {
+typename AVLTree<T>::Node* AVLTree<T>::sub_insert(Node* p, T key, int& position) {
+    if (!p) {
         return new Node(key);
     }
-    if (key < nd->key) {
-        Node* tmp = insert_impl(nd->left, key); 
-        if (!tmp) {
-            return nullptr;
-        }
-        nd->left = tmp; 
-    } else if (key > nd->key) {
-        Node* tmp = insert_impl(nd->right, key); 
-        if (!tmp) {
-            return nullptr;
-        }
-        nd->right = tmp;
-        // std::cout << nd->key << " " << nd->right->key << std::endl;
+
+    ++p->nodes;
+
+    if (key < p->key) {
+        position += get_nodes(p->right) + 1;
+        p->left = sub_insert(p->left, key, position);
     } else {
+        p->right = sub_insert(p->right, key, position);
+    }
+
+    return balance(p);
+}
+
+template<typename T>
+void AVLTree<T>::fix_height(Node* p) {
+    p->height = std::max(get_height(p->left), get_height(p->right)) + 1;
+}
+
+template<typename T>
+typename AVLTree<T>::Node* AVLTree<T>::balance(Node* p) {
+    if (!p) {
         return nullptr;
     }
-    return nd->balance();
+    fix_height(p);
+
+    if (balance_factor(p) == -2) {
+        if (balance_factor(p->left) > 0) {
+            p->left = rotate_left(p->left);
+        }
+
+        return rotate_right(p);
+    } else if (balance_factor(p) == 2) {
+        if (balance_factor(p->right) < 0) {
+            p->right = rotate_right(p->right);
+        }
+
+        return rotate_left(p);
+    }
+    return p;
 }
 
 template<typename T>
-typename AVLTree<T>::Node* AVLTree<T>::findmin(Node* nd) {
-    if (!nd->left) {
-        return nd;
+void AVLTree<T>::fix_nodes(Node* p) {
+    if (!p) {
+        return;
     }
-    return findmin(nd->left);
+
+    p->nodes = get_nodes(p->left) + get_nodes(p->right) + 1;
 }
 
 template<typename T>
-typename AVLTree<T>::Node* AVLTree<T>::removemin_impl(Node* nd) {
-    if (!nd->left) {
-        return nd->right;
-    }
-    nd->left = removemin_impl(nd->left);
-    return nd->balance();
+typename AVLTree<T>::Node* AVLTree<T>::rotate_right(Node* p) {
+    Node* new_node = p->left;
+
+    p->left = new_node->right;
+    new_node->right = p;
+
+    fix_nodes(p);
+    fix_nodes(new_node);
+
+    fix_height(p);
+    fix_height(new_node);
+
+    return new_node;
 }
+
+template<typename T>
+typename AVLTree<T>::Node* AVLTree<T>::rotate_left(Node* p) {
+    Node* new_node = p->right;
+
+    p->right = new_node->left;
+    new_node->left = p;
+
+    fix_nodes(p);
+    fix_nodes(new_node);
+
+    fix_height(p);
+    fix_height(new_node);
+
+    return new_node;
+}
+
+template<typename T>
+typename AVLTree<T>::Node* AVLTree<T>::sub_remove(Node* p, int pos) {
+    if (!p) {
+        return nullptr;
+    }
+
+    if (pos >= p->nodes) {
+        return p;
+    }
+
+    int cur_pos = 0;
+    std::stack<AVLTree<T>::Node*> node_stack;
+
+    size_t right_nodes = get_nodes(p->right);
+    while (pos - cur_pos != right_nodes) {
+        if (pos - cur_pos > right_nodes) {
+            node_stack.push(p);
+            p = p->left;
+            cur_pos += right_nodes + 1;
+        } else if (pos - cur_pos < right_nodes) {
+            node_stack.push(p);
+            p = p->right;
+        }
+        right_nodes = get_nodes(p->right);
+    }
+
+    Node* left = p->left;
+    Node* right = p->right;
+    T key = p->key;
+
+    p->left = nullptr;
+    p->right = nullptr;
+    delete p;
+
+    if (!right) {
+        if (!left) {
+            if (!node_stack.empty()) {
+                p = node_stack.top();
+                node_stack.pop();
+                --p->nodes;
+                if (p->key > key) {
+                    p->left = nullptr;
+                } else {
+                    p->right = nullptr;
+                }
+            } else {
+                return nullptr;
+            }
+        } else {
+            p = left;
+        }
+    } else {
+        Node* min = find_min(right);
+        min->right = remove_min(right);
+        min->left = left;
+        fix_nodes(min);
+        p = balance(min);
+    }
+
+    while (!node_stack.empty()) {
+        Node* tmp = node_stack.top();
+        --tmp->nodes;
+
+        if (tmp->key > p->key) {
+            tmp->left = p;
+        } else {
+            tmp->right = p;
+        }
+
+        p = balance(tmp);
+        node_stack.pop();
+    }
+
+    return p;
+}
+
+template<typename T>
+typename AVLTree<T>::Node* AVLTree<T>::find_min(Node* p) {
+    if (!p->left) {
+        return p;
+    }
+    return find_min(p->left);
+}
+
+template<typename T>
+typename AVLTree<T>::Node* AVLTree<T>::remove_min(Node* p) {
+    if (!p->left) {
+        return p->right;
+    }
+    p->left = remove_min(p->left);
+    --p->nodes;
+    return balance(p);
+}
+
+
 
 int main() {
-    int k = 0;
-    std::cin >> k;
-    AVLTree<int> avl;
-    for (int i = 0; i < k; ++i) {
-        int command = 0;
-        int key = 0;
+    size_t N = 0;
+
+    std::cin >> N;
+
+    AVLTree<int> avl_tree;
+
+    for (size_t i = 0; i < N; i++) {
+        int command = 0, key = 0, position = 0;
         std::cin >> command >> key;
+
         if (command == 1) {
-            avl.insert(key);
-            std::cout << avl.find_num(key) << std::endl;
+            avl_tree.insert(key, position);
+            std::cout << position << std::endl;
         } else if (command == 2) {
-            avl.remove(key);
+            avl_tree.remove(key);
         }
     }
+
+    return 0;
 }
