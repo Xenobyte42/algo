@@ -10,7 +10,6 @@ class BinaryTree {
         size_t height = 1;
         Node* left = nullptr;
         Node* right = nullptr;
-        Node* parent = nullptr;
     };
     
   public:
@@ -61,23 +60,28 @@ void BinaryTree<Value>::update_height(Node* node) {
 template<typename Value>
 BinaryTree<Value>::~BinaryTree() {
     if (root) {
-        Node* current = root;
-        while (current) {
+        std::stack<Node*> nodes;
+        nodes.push(root);
+        while (!nodes.empty()) {
+            Node* current = nodes.top();
             if (current->left) {
                 current = current->left;
+                nodes.push(current);
             } else if (current->right) {
                 current = current->right;
+                nodes.push(current);
             } else {
-                Node* parent = current->parent;
-                if (parent) {
+                nodes.pop();
+                if (!nodes.empty()) {
+                    Node* parent = nodes.top();
+                    
                     if (parent->left == current) {
                         parent->left = nullptr;
                     } else {
                         parent->right = nullptr;
-                    }
+                    }   
                 }
                 delete current;
-                current = parent;
             }
         }
         root = nullptr;
@@ -91,28 +95,37 @@ void BinaryTree<Value>::insert(Value& val) {
         return;
     }
     Node* node = root;
-    Node* parent = nullptr;
+
+    std::stack<Node*> nodes;
+
     while (node) {
-        parent = node;
         if (val >= node->key) {
+            nodes.push(node);
             node = node->right;
             if (!node) {
+                Node* parent = nodes.top();
+                nodes.pop();
                 parent->right = create_new(val);
-                parent->right->parent = parent;
-                while (parent) {
+                update_height(parent);
+                while (!nodes.empty()) {
+                    parent = nodes.top();
+                    nodes.pop();
                     update_height(parent);
-                    parent = parent->parent;
                 } 
                 return;
             }
         } else {
+            nodes.push(node);
             node = node->left;
             if (!node) {
+                Node* parent = nodes.top();
+                nodes.pop();
                 parent->left = create_new(val);
-                parent->left->parent = parent;
-                while (parent) {
+                update_height(parent);
+                while (!nodes.empty()) {
+                    parent = nodes.top();
+                    nodes.pop();
                     update_height(parent);
-                    parent = parent->parent;
                 } 
                 return;
             }
